@@ -1,8 +1,0 @@
-Sitemap
-=======
-
-.. toctree::
-   :maxdepth: 1
-
-   2013/02/11/initial_post
-
