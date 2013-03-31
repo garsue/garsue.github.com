@@ -1,0 +1,114 @@
+FabricとVagrant
+======================================
+
+
+
+.. author:: default
+.. categories:: none
+.. tags:: none
+.. comments::
+
+
+Vagrant
+--------
+
+開発環境向け仮想マシンマネージャでお馴染みの `Vagrant <http://www.vagrantup.com/>`_ を最近使い始めた。
+実態は単なるVirtual Box [#f0]_ のCLIユーティリティだが、開発端末としてMacを利用している場合、KVMは利用できないし、LXCやFreeBSD jailに相当するものもないため、開発環境構築に重宝する。
+
+手軽に仮想マシンを作れるようになった一方で、開発環境として構成する作業は別途面倒を見なければならない。
+そういった文脈で *Chef* と一緒に語られることが多いが、Chefは学習コストが高いことでお馴染みなので僕は未だに手を出せていない [#f1]_ 。
+
+Fabric
+--------
+
+そこで前々から気になっていた `Fabric <http://docs.fabfile.org/>`_ を利用することにした。
+これはコマンド実行やらファイル転送やらの一連の環境構築作業をtaskとしてSSH越しに実行するPython製のツールだ。
+
+動きとしてはかなりシンプルで、各種APIを組み合わせて作った関数をtaskとしてローカルないしリモートで実行するだけ。
+ローカルでshell scriptの代わりに使うのも大いに便利らしく、ちょっとした自動化ならかなりのことをこなせそうだ [#f2]_ 。
+僕のようにshell力が乏しい人間にとって、Pythonで書けるというのはうれしい。
+
+FabricでVagrantに入る
+------------------------
+
+Vagrantと組み合わせる場合、まずFabricがsshで開発環境に入れなければならないのでそのための設定をする。
+ググったところ、 `Use Fabric on Vagrant instances <http://sysadminpy.com/sysadmin/2011/04/30/use-fabric-on-vagrant-instances/>`_ という記事がヒットしたが、秘密鍵のパスを取得する部分が動かなかったので以下のように修正した。::
+
+   import re
+   from fabric.api import env, local
+
+   def vagrant():
+       # change from the default user to 'vagrant'
+       env.user = 'vagrant'
+       # connect to the port-forwarded ssh
+       env.hosts = ['127.0.0.1:2222']
+
+       # use vagrant ssh key
+       # 'IdentityFile "/Users/garsue/.vagrant.d/insecure_private_key"'
+       result = local('vagrant ssh-config | grep IdentityFile', capture=True)
+       env.key_filename = re.search('"(.*)"', result).group(1)
+
+その他にハマった部分として、ホスト名をavahiおよびbonjourで割り振っている場合、 ``env.hosts`` にそのままホスト名を渡しても名前解決できないため、接続できなかった。
+
+回避策として ``socket`` モジュールの ``gethostbyname`` を利用して自力でIPアドレスを引っ張った。
+
+コンテキストマネージャ
+------------------------
+
+`Fabric デプロイツールのPythonicな書き方 <http://www.ianlewis.org/jp/fabric-pythonic>`_ の最後にあるように、コンテキストマネージャを利用してコマンドのprefixを指定できる点がかなり良い。
+よく使うのは ``cd`` で、たとえば ::
+
+   with cd("~/.local/"):
+      run("ls -la")
+
+とした場合、このコンテキスト下では全てのコマンドの先頭に ``cd ~/.local/ &&`` が付与されるため、結果として ``~/.local/`` 以下が表示される。
+
+さらに ``fabric.context_managers.prefix`` を使えば任意のprefixを利用できる。あまりいい例ではないかもしれないが、 *virtualenvwrapper* を利用して仮想環境を作成するtaskを以下のように定義した。::
+
+   def setup_python():
+       packages = ["ipython", "mock", "pep8", "pyflakes", "pytest-cov", "tox",
+                   "dotcloud"]
+       packages = " ".join(["-i " + p for p in packages])
+       with cd("~"):
+           run("wget http://python-distribute.org/distribute_setup.py")
+           run("python3 distribute_setup.py --user")
+           run("rm distribute*")
+           run(".local/bin/easy_install --user pip")
+           run(".local/bin/pip install --user virtualenvwrapper")
+           prefixes = [
+               "export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3",
+               "export VIRTUALENVWRAPPER_VIRTUALENV=$HOME/.local/bin/virtualenv",
+               "export WORKON_HOME=$HOME/.virtualenvs",
+               "export PROJECT_HOME=$HOME/Projects",
+               "source .local/bin/virtualenvwrapper.sh"
+           ]
+           with prefix(" && ".join(prefixes)):
+               run("mkvirtualenv --python=python3 --use-distribute "
+                   "{} 3".format(packages))
+               run("mkvirtualenv --python=python2 --use-distribute "
+                   "{} 2".format(packages))
+
+利用したPlugins
+------------------------
+
+vagrant-vbguest
+^^^^^^^^^^^^^^^
+
+利用しているVirtual Boxと配布されているbox [#f3]_ の Guest Additions のバージョンが異なっていたため、それをアップデートするPluginである **vagrant-vbguest** を利用した。
+
+Sahara
+^^^^^^
+
+Chefと違いFabricには冪等性が無いため、同じtaskを何度も実行すると環境が変化してしまう。環境構築が目的の場合、一度作ったtaskを何度も実行するということはあまりないかもしれないが、task作成時には動かしながら作ることになるため、task実行前の状態に戻せるような仕組みが欲しくなるだろう。
+
+そこでsandbox機能を実現するpluginである **Sahara** を利用した。これを利用することで、仮想マシン上で行った操作を任意のタイミングでrollbackして取り消せるようなる。
+
+ただしVagrant 1.1に対応していないとか開発が止まっているとか言われているので少し注意して利用したい。
+
+
+.. rubric:: 脚注
+
+.. [#f0] AWSとかVMwareとかにも対応しているらしい? 個人的に必要ないので調べてない
+.. [#f1] `入門Chef Solo - Infrastructure as Code <http://tatsu-zine.com/books/chef-solo>`_ が出たのでそろそろ触りたいとは思っているが、まだもう少し見送る
+.. [#f2] `Fabric Python Developers Festa 2013.03 #pyfes // Speaker Deck <https://speakerdeck.com/drillbits/fabric-python-developers-festa-2013-dot-03-number-pyfes>`_
+.. [#f3] 僕は専ら Ubuntu 12.04 を利用している

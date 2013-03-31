@@ -1,16 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0">
     <channel>
-        <title>garsue-weblog</title>
+        <title>garsue-blog</title>
         <link>http://garsue.github.com/blog/</link>
         <description>個人的な技術系ブログ。備忘録、レビューなど。</description>
         <language>en-us</language>
-        <pubDate>Mon, 11 Feb 2013 00:00:00 +0900</pubDate>
+        <pubDate>Sun, 31 Mar 2013 00:00:00 +0900</pubDate>
         
+        <item>
+            <link>http://garsue.github.com/blog/2013/03/31/fabric_with_vagrant.html</link>
+            <guid>http://garsue.github.com/blog/2013/03/31/fabric_with_vagrant.html</guid>
+            <title><![CDATA[FabricとVagrant]]></title>
+            <description><![CDATA[<div class="section" id="fabricvagrant">
+<h1>FabricとVagrant</h1>
+<div class="section" id="vagrant">
+<h2>Vagrant</h2>
+<p>開発環境向け仮想マシンマネージャでお馴染みの <a class="reference external" href="http://www.vagrantup.com">Vagrant</a> を最近使い始めた。
+実態は単なるVirtual Box <a class="footnote-reference" href="#f0" id="id2">[1]</a> のCLIユーティリティだが、開発端末としてMacを利用している場合、KVMは利用できないし、LXCやFreeBSD jailに相当するものもないため、開発環境構築に重宝する。</p>
+<p>手軽に仮想マシンを作れるようになった一方で、開発環境として構成する作業は別途面倒を見なければならない。
+そういった文脈で <em>Chef</em> と一緒に語られることが多いが、Chefは学習コストが高いことでお馴染みなので僕は未だに手を出せていない <a class="footnote-reference" href="#f1" id="id3">[2]</a> 。</p>
+</div>
+<div class="section" id="fabric">
+<h2>Fabric</h2>
+<p>そこで前々から気になっていた <a class="reference external" href="http://docs.fabfile.org">Fabric</a> を利用することにした。
+これはコマンド実行やらファイル転送やらの一連の環境構築作業をtaskとしてSSH越しに実行するPython製のツールだ。</p>
+<p>動きとしてはかなりシンプルで、各種APIを組み合わせて作った関数をtaskとしてローカルないしリモートで実行するだけ。
+ローカルでshell scriptの代わりに使うのも大いに便利らしく、ちょっとした自動化ならかなりのことをこなせそうだ <a class="footnote-reference" href="#f2" id="id5">[3]</a> 。
+僕のようにshell力が乏しい人間にとって、Pythonで書けるというのはうれしい。</p>
+</div>
+<div class="section" id="id6">
+<h2>FabricでVagrantに入る</h2>
+<p>Vagrantと組み合わせる場合、まずFabricがsshで開発環境に入れなければならないのでそのための設定をする。
+ググったところ、 <a class="reference external" href="http://sysadminpy.com/sysadmin/2011/04/30/use-fabric-on-vagrant-instances">Use Fabric on Vagrant instances</a> という記事がヒットしたが、秘密鍵のパスを取得する部分が動かなかったので以下のように修正した。:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="n">env</span><span class="p">,</span> <span class="n">local</span>
+
+<span class="k">def</span> <span class="nf">vagrant</span><span class="p">():</span>
+    <span class="c"># change from the default user to 'vagrant'</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="s">'vagrant'</span>
+    <span class="c"># connect to the port-forwarded ssh</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s">'127.0.0.1:2222'</span><span class="p">]</span>
+
+    <span class="c"># use vagrant ssh key</span>
+    <span class="c"># 'IdentityFile &quot;/Users/garsue/.vagrant.d/insecure_private_key&quot;'</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">local</span><span class="p">(</span><span class="s">'vagrant ssh-config | grep IdentityFile'</span><span class="p">,</span> <span class="n">capture</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">key_filename</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">'&quot;(.*)&quot;'</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>その他にハマった部分として、ホスト名をavahiおよびbonjourで割り振っている場合、 <span class="docutils literal"><span class="pre">env.hosts</span></span> にそのままホスト名を渡しても名前解決できないため、接続できなかった。</p>
+<p>回避策として <span class="docutils literal"><span class="pre">socket</span></span> モジュールの <span class="docutils literal"><span class="pre">gethostbyname</span></span> を利用して自力でIPアドレスを引っ張った。</p>
+</div>
+<div class="section" id="id7">
+<h2>コンテキストマネージャ</h2>
+<p><a class="reference external" href="http://www.ianlewis.org/jp/fabric-pythonic">Fabric デプロイツールのPythonicな書き方</a> の最後にあるように、コンテキストマネージャを利用してコマンドのprefixを指定できる点がかなり良い。
+よく使うのは <span class="docutils literal"><span class="pre">cd</span></span> で、たとえば</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s">&quot;~/.local/&quot;</span><span class="p">):</span>
+   <span class="n">run</span><span class="p">(</span><span class="s">&quot;ls -la&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>とした場合、このコンテキスト下では全てのコマンドの先頭に <span class="docutils literal"><span class="pre">cd</span> <span class="pre">~/.local/</span> <span class="pre">&amp;&amp;</span></span> が付与されるため、結果として <span class="docutils literal"><span class="pre">~/.local/</span></span> 以下が表示される。</p>
+<p>さらに <span class="docutils literal"><span class="pre">fabric.context_managers.prefix</span></span> を使えば任意のprefixを利用できる。あまりいい例ではないかもしれないが、 <em>virtualenvwrapper</em> を利用して仮想環境を作成するtaskを以下のように定義した。:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">setup_python</span><span class="p">():</span>
+    <span class="n">packages</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;ipython&quot;</span><span class="p">,</span> <span class="s">&quot;mock&quot;</span><span class="p">,</span> <span class="s">&quot;pep8&quot;</span><span class="p">,</span> <span class="s">&quot;pyflakes&quot;</span><span class="p">,</span> <span class="s">&quot;pytest-cov&quot;</span><span class="p">,</span> <span class="s">&quot;tox&quot;</span><span class="p">,</span>
+                <span class="s">&quot;dotcloud&quot;</span><span class="p">]</span>
+    <span class="n">packages</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&quot;-i &quot;</span> <span class="o">+</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">packages</span><span class="p">])</span>
+    <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s">&quot;~&quot;</span><span class="p">):</span>
+        <span class="n">run</span><span class="p">(</span><span class="s">&quot;wget http://python-distribute.org/distribute_setup.py&quot;</span><span class="p">)</span>
+        <span class="n">run</span><span class="p">(</span><span class="s">&quot;python3 distribute_setup.py --user&quot;</span><span class="p">)</span>
+        <span class="n">run</span><span class="p">(</span><span class="s">&quot;rm distribute*&quot;</span><span class="p">)</span>
+        <span class="n">run</span><span class="p">(</span><span class="s">&quot;.local/bin/easy_install --user pip&quot;</span><span class="p">)</span>
+        <span class="n">run</span><span class="p">(</span><span class="s">&quot;.local/bin/pip install --user virtualenvwrapper&quot;</span><span class="p">)</span>
+        <span class="n">prefixes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s">&quot;export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3&quot;</span><span class="p">,</span>
+            <span class="s">&quot;export VIRTUALENVWRAPPER_VIRTUALENV=$HOME/.local/bin/virtualenv&quot;</span><span class="p">,</span>
+            <span class="s">&quot;export WORKON_HOME=$HOME/.virtualenvs&quot;</span><span class="p">,</span>
+            <span class="s">&quot;export PROJECT_HOME=$HOME/Projects&quot;</span><span class="p">,</span>
+            <span class="s">&quot;source .local/bin/virtualenvwrapper.sh&quot;</span>
+        <span class="p">]</span>
+        <span class="k">with</span> <span class="n">prefix</span><span class="p">(</span><span class="s">&quot; &amp;&amp; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefixes</span><span class="p">)):</span>
+            <span class="n">run</span><span class="p">(</span><span class="s">&quot;mkvirtualenv --python=python3 --use-distribute &quot;</span>
+                <span class="s">&quot;{} 3&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">packages</span><span class="p">))</span>
+            <span class="n">run</span><span class="p">(</span><span class="s">&quot;mkvirtualenv --python=python2 --use-distribute &quot;</span>
+                <span class="s">&quot;{} 2&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">packages</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="plugins">
+<h2>利用したPlugins</h2>
+<div class="section" id="vagrant-vbguest">
+<h3>vagrant-vbguest</h3>
+<p>利用しているVirtual Boxと配布されているbox <a class="footnote-reference" href="#f3" id="id8">[4]</a> の Guest Additions のバージョンが異なっていたため、それをアップデートするPluginである <strong>vagrant-vbguest</strong> を利用した。</p>
+</div>
+<div class="section" id="sahara">
+<h3>Sahara</h3>
+<p>Chefと違いFabricには冪等性が無いため、同じtaskを何度も実行すると環境が変化してしまう。環境構築が目的の場合、一度作ったtaskを何度も実行するということはあまりないかもしれないが、task作成時には動かしながら作ることになるため、task実行前の状態に戻せるような仕組みが欲しくなるだろう。</p>
+<p>そこでsandbox機能を実現するpluginである <strong>Sahara</strong> を利用した。これを利用することで、仮想マシン上で行った操作を任意のタイミングでrollbackして取り消せるようなる。</p>
+<p>ただしVagrant 1.1に対応していないとか開発が止まっているとか言われているので少し注意して利用したい。</p>
+<p class="rubric">脚注</p>
+<table class="docutils footnote" frame="void" id="f0" rules="none">
+<colgroup><col class="label"/><col/></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[1]</a></td><td>AWSとかVMwareとかにも対応しているらしい? 個人的に必要ないので調べてない</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="f1" rules="none">
+<colgroup><col class="label"/><col/></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id3">[2]</a></td><td><a class="reference external" href="http://tatsu-zine.com/books/chef-solo">入門Chef Solo - Infrastructure as Code</a> が出たのでそろそろ触りたいとは思っているが、まだもう少し見送る</td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="f2" rules="none">
+<colgroup><col class="label"/><col/></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[3]</a></td><td><a class="reference external" href="https://speakerdeck.com/drillbits/fabric-python-developers-festa-2013-dot-03-number-pyfes">Fabric Python Developers Festa 2013.03 #pyfes // Speaker Deck</a></td></tr>
+</tbody>
+</table>
+<table class="docutils footnote" frame="void" id="f3" rules="none">
+<colgroup><col class="label"/><col/></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id8">[4]</a></td><td>僕は専ら Ubuntu 12.04 を利用している</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>]]></description>
+             <pubDate>Sun, 31 Mar 2013 00:00:00 +0900</pubDate>
+        </item>
+    
         <item>
             <link>http://garsue.github.com/blog/2013/02/11/initial_post.html</link>
             <guid>http://garsue.github.com/blog/2013/02/11/initial_post.html</guid>
-            <title>ブログ開始</title>
+            <title><![CDATA[ブログ開始]]></title>
             <description><![CDATA[<div class="section" id="id1">
 <h1>ブログ開始</h1>
 <p>日々の積み重ねの手段として、ブログを書くことにした。
