@@ -30,7 +30,7 @@
         <script src="_static/main.js"></script>
         <link rel="next" title="前の投稿" href="page2.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
+        URL_ROOT:    '',
         VERSION:     '1.2.1',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
@@ -77,6 +77,73 @@
             <li class="left"></li>
             <li class="right"><a href="page2.html">前の投稿</a> &raquo; </li>
         </ul><div class="timestamp postmeta">
+            <span>2013/09/22</span>
+        </div>
+        <div class="section" id="gatling">
+<h1><a href="2013/09/22/load_test_with_gatling.html">Gatling を使った負荷テスト</a></h1>
+<p>先日Webサービスの負荷テストを行う際に、 <a class="reference external" href="http://gatling-tool.org">Gatling</a> というツールを使ったのでその概要をまとめておく。
+ざっくり調べたことのまとめなので、間違い等あったら <a class="reference external" href="https://twitter.com/__garsue__">@__garsue__</a> に指摘してください。</p>
+<div class="section" id="id2">
+<h2>負荷テストとシナリオ</h2>
+<p>そもそも僕は負荷テストというものが何かを知らなかった。
+ググったところ JMeterを始め、いろいろな形式の負荷テストツールや負荷テストサービスがあるらしい。</p>
+<p>いずれのツールもやることは基本的にHTTPリクエストを投げることなのだが、その内容や数など、シチュエーションに応じたリクエストを作らなければ負荷テストとして意味が無い。
+そのシチュエーションを再現した一連のHTTPリクエストを「シナリオ」という。</p>
+<p>負荷テストツールを選ぶ上で、どのようにシナリオを作るかという点が大きな選択基準となる、と思う。
+その点に関して、今回触ったGatlingはなかなか秀逸だと感じた。</p>
+</div>
+<div class="section" id="id3">
+<h2>Gatlingの特徴</h2>
+<p>Gatlingの特徴はシナリオをScalaによる内部DSLで記述する点だ。
+初見でも<a class="reference external" href="https://gist.github.com/slandelle/3870509">サンプル</a>をそれなりに読み下せる。</p>
+<p><a class="reference external" href="https://gist.github.com/slandelle/3870492">JMeterのサンプル</a>が比較対象として上げられているが、こんな長ったらしいXMLを見ると体調を崩すタイプの人間にはGatlingのDSLはかなりありがたい。</p>
+<p>また、JMeter同様シナリオの自動生成もできる。やり方はJMeterと同様プロキシサーバを立ててそれ越しにWebサービスにアクセスし、HTTPのやりとりを記録する方法だ。
+JMeterと比べた利点は生成されるシナリオを人が読める点だ。</p>
+<p>生成されたシナリオは余計なリクエストや不要なヘッダを含んでいたりして、シナリオとしてそのまま使えるということはそう多くないと思う。
+したがって、シナリオとして仕上げるためにはある程度編集が必要となる。</p>
+<p>JMeterの場合はちまちまGUIから編集するか、場合によっては巨大なXMLをいじるはめになるのだろうが、Gatlingでは生成されるシナリオも比較的触りやすい形になっている <a class="footnote-reference" href="#f1" id="id5">[1]</a> 。</p>
+<p>シナリオを実行した結果のレポートもおしゃれで、大したこと無いテストでもなんだか一仕事した感を演出してくれる。
+レスポンスタイムの最小・最大・平均だけでなく、標準偏差・P値まで出し、グラフによる可視化もこれでもかというぐらいやってくれる。</p>
+<p>レポートに関しては他のツールがどんなものか分からないが、Gatlingのレポートで不足するシーンはめったにないだろう。</p>
+</div>
+<div class="section" id="id6">
+<h2>使用方法</h2>
+<p>公式ドキュメントに全て書いてあるので、そちらを読んでほしい。
+<a class="reference external" href="https://github.com/excilys/gatling/wiki">https://github.com/excilys/gatling/wiki</a></p>
+<p>英語だが、サンプルも多く使い方もシンプルなので、それほど難儀しないだろう。
+Gatling 1とGatling 2があるが、2はまだ開発中とのこと。</p>
+</div>
+<div class="section" id="id7">
+<h2>不満</h2>
+<p>起動が遅い。JVMの起動とシナリオのコンパイルのせいか、起動からシナリオ実行まで結構もたつく。
+シナリオ作成中にこまめに修正-&gt;実行をするのはそれほどスムーズではなかった。</p>
+<p>最初は一からシナリオを手書きしていたが、あまりにももたもたしてストレスが溜まったので、結局Recoderで自動生成したものやや修正するだけにした。
+そもそもそういった使い方を前提としているのかもしれない。</p>
+<p>あとはcheckによるアサーションでリダイレクト先のURLの部分一致がほしいと思った。</p>
+<p class="rubric">脚注</p>
+<table class="docutils footnote" frame="void" id="f1" rules="none">
+<colgroup><col class="label"/><col/></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[1]</a></td><td>なぜか文字列がヒアドキュメントの形式( <span class="docutils literal"><span class="pre">&quot;&quot;&quot;こんな感じ&quot;&quot;&quot;</span></span> )にされるが。</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+        <div class="postmeta">
+        <div class="author">
+            <span>投稿者 がーすー</span>
+        </div>
+        <div class="categories">
+            <span>
+                カテゴリー:
+                <a href="categories/tools.html">tools</a></span>
+        </div>
+        <div class="tags">
+            <span>
+                タグ:
+                <a href="tags/gatling.html">Gatling</a></span>
+        </div>
+        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
             <span>2013/07/14</span>
         </div>
         <div class="section" id="id1">
@@ -85,7 +152,7 @@
 <h2>概要</h2>
 <p>現状の飼育条件を考慮した上で飼育可能と思われる種としてヒョウモントカゲモドキをとりあげ、どの程度の費用と手間がかかるかを検討する。</p>
 </div>
-<div class="section" id="id3">
+<div class="section" id="id4">
 <h2>飼育条件</h2>
 <ul class="simple">
 <li>世話ができない期間(最大1週間程度）があっても問題ない生物であること。</li>
@@ -93,9 +160,9 @@
 <li>極端に好みが分かれる容姿の生物(例えばヘビ、カエル、ゴキブリ、ヤスデ)でないこと。</li>
 </ul>
 </div>
-<div class="section" id="id4">
-<h2>候補となる生物</h2>
 <div class="section" id="id5">
+<h2>候補となる生物</h2>
+<div class="section" id="id6">
 <h3>ヒョウモントカゲモドキ</h3>
 <p>ペットとして定番の爬虫類である。
 飼いやすい性質を持っている。
@@ -107,7 +174,7 @@
 生き餌以外にも餌付くが慣れないうちは生き餌が必要となる。</p>
 <p>ビジュアル的にもカラフルで愛嬌のある顔をしており、比較的親しみやすいと思われる。</p>
 </div>
-<div class="section" id="id6">
+<div class="section" id="id7">
 <h3>タランチュラ (オオツチグモ）</h3>
 <p>近年では飼育法も確立し、初心者でも十分な調査をすれば飼育できると思われる。
 丈夫な種が多く、長期間の絶食にも耐える。
@@ -122,20 +189,20 @@
 刺激毛が目や皮膚についた場合は炎症を起こす場合がある。</p>
 <p>やはりクモであるため、苦手な人には受け入れがたい生物かもしれない。</p>
 </div>
-<div class="section" id="id7">
+<div class="section" id="id8">
 <h3>その他</h3>
 <p>基本的に毎日世話が必要な哺乳類・鳥類は避ける。
 一般に高温に弱いと思われる水棲生物は避けたほうがよい。
 地上性の両生類（ツノガエル、サラマンダーなど）も高温には弱いため避けたほうが無難だろう。</p>
 <p>タランチュラと同時に語られる事が多いサソリは検討に値するが、毒性はタランチュラよりも強く、乾燥・水切れに弱いらしい。</p>
 </div>
-<div class="section" id="id8">
+<div class="section" id="id9">
 <h3>結論</h3>
 <p>もっとも条件に合っている生物はやはりヒョウモントカゲモドキだろう。
 以下ではヒョウモントカゲモドキを飼育する前提で必要となる設備・費用・手間などを検討していく。</p>
 </div>
 </div>
-<div class="section" id="id9">
+<div class="section" id="id10">
 <h2>初期費用</h2>
 <table border="1" class="docutils">
 <colgroup>
@@ -173,30 +240,30 @@
 </tbody>
 </table>
 </div>
-<div class="section" id="id10">
-<h2>セットアップ</h2>
 <div class="section" id="id11">
+<h2>セットアップ</h2>
+<div class="section" id="id12">
 <h3>生体</h3>
 <p>極端に安い生体は避ける。
 通販よりも実物を見て、健康状態と餌付きを確認して購入することが望ましい。
 アルビノ個体は通常個体よりも視力が弱いため避ける。</p>
 </div>
-<div class="section" id="id12">
+<div class="section" id="id13">
 <h3>飼育ケース</h3>
 <p>今あるものが使えるか検討する。
 既存のものを利用する場合でも蓋を購入する必要がある。</p>
 </div>
-<div class="section" id="id13">
+<div class="section" id="id14">
 <h3>保温器具</h3>
 <p>遠赤外線パネルヒーターを利用する。
 飼育ケース全面を温めるわけではないので、ケース底面の1/2ないし1/3程度をカバーできるものを選ぶ。</p>
 </div>
-<div class="section" id="id14">
+<div class="section" id="id15">
 <h3>シェルター</h3>
 <p>流木等の天然のものや、セラミック製のものなどがある。
 掃除のしやすいものを選ぶ。</p>
 </div>
-<div class="section" id="id15">
+<div class="section" id="id16">
 <h3>その他必要なもの</h3>
 <ul class="simple">
 <li>水苔設置用容器(タッパーなど)</li>
@@ -204,15 +271,15 @@
 </ul>
 </div>
 </div>
-<div class="section" id="id16">
+<div class="section" id="id17">
 <h2>ランニングコスト</h2>
 <p>遠赤外線パネルヒーターの消費電力は6~10Wであり、家庭用ルータ1台分程度である。
 夏場はつける必要はないが、冷房を入れる場合はつけるべきかもしれない。</p>
 <p>餌代は仮に1日平均で6匹のイエコオロギを食べ、イエコオロギ一匹あたり8円だった場合、1,440になる。</p>
 </div>
-<div class="section" id="id17">
-<h2>日常的な世話</h2>
 <div class="section" id="id18">
+<h2>日常的な世話</h2>
+<div class="section" id="id19">
 <h3>毎日やる世話</h3>
 <ul class="simple">
 <li>給餌(幼体・若い個体の場合)</li>
@@ -220,37 +287,37 @@
 <li>飲水の交換</li>
 </ul>
 </div>
-<div class="section" id="id19">
+<div class="section" id="id20">
 <h3>週に3,4度やる世話</h3>
 <ul class="simple">
 <li>給餌(成体の場合)</li>
 </ul>
 </div>
-<div class="section" id="id20">
+<div class="section" id="id21">
 <h3>週に1度やる世話</h3>
 <ul class="simple">
 <li>床材(キッチンペーパー)を取り替える。</li>
 </ul>
 </div>
 </div>
-<div class="section" id="id21">
-<h2>餌</h2>
 <div class="section" id="id22">
+<h2>餌</h2>
+<div class="section" id="id23">
 <h3>生き餌</h3>
 <p>ヨーロッパイエコオロギかミルワームが定番である。
 その他にはハニーワーム、ピンクマウス、デュビアがよく利用されている。
 栄養を増加・調整するために餌にも栄養のあるものを食べさせ、餌にする直前にサプリメントをまぶす。</p>
-<p>餌の繁殖はさほど難しくなく、成功すれば安価に安定した餌が得られる。
+<p>餌の飼育は容易で、繁殖に成功すれば安価に安定した餌が得られる。
 ただしイエコオロギは素早いため脱走に注意する。</p>
 </div>
-<div class="section" id="id23">
+<div class="section" id="id24">
 <h3>生き餌以外</h3>
 <p>大半が冷凍であるため、冷凍庫が必要となる。
 与える際は十分に湯につけて温める。</p>
 <p>人工飼料もあるが、餌付くかどうかは個体により、補助的な利用に留めておくべきという情報もある。</p>
 </div>
 </div>
-<div class="section" id="id24">
+<div class="section" id="id25">
 <h2>参考</h2>
 <ul class="simple">
 <li><a class="reference external" href="http://geckolog.jp/care/20120607/leopard-geckos-care">http://geckolog.jp/care/20120607/leopard-geckos-care/</a></li>
@@ -274,128 +341,6 @@
                 タグ:
                 <a href="tags/animal.html">animal</a></span>
         </div>
-        </div><div class="separator post_separator"></div><div class="timestamp postmeta">
-            <span>2013/03/31</span>
-        </div>
-        <div class="section" id="fabricvagrant">
-<h1><a href="2013/03/31/fabric_with_vagrant.html">FabricとVagrant</a></h1>
-<div class="section" id="vagrant">
-<h2>Vagrant</h2>
-<p>開発環境向け仮想マシンマネージャでお馴染みの <a class="reference external" href="http://www.vagrantup.com">Vagrant</a> を最近使い始めた。
-実態は単なるVirtual Box <a class="footnote-reference" href="#f0" id="id2">[1]</a> のCLIユーティリティだが、開発端末としてMacを利用している場合、KVMは利用できないし、LXCやFreeBSD jailに相当するものもないため、開発環境構築に重宝する。</p>
-<p>手軽に仮想マシンを作れるようになった一方で、開発環境として構成する作業は別途面倒を見なければならない。
-そういった文脈で <em>Chef</em> と一緒に語られることが多いが、Chefは学習コストが高いことでお馴染みなので僕は未だに手を出せていない <a class="footnote-reference" href="#f1" id="id3">[2]</a> 。</p>
-</div>
-<div class="section" id="fabric">
-<h2>Fabric</h2>
-<p>そこで前々から気になっていた <a class="reference external" href="http://docs.fabfile.org">Fabric</a> を利用することにした。
-これはコマンド実行やらファイル転送やらの一連の環境構築作業をtaskとしてSSH越しに実行するPython製のツールだ。</p>
-<p>動きとしてはかなりシンプルで、各種APIを組み合わせて作った関数をtaskとしてローカルないしリモートで実行するだけ。
-ローカルでshell scriptの代わりに使うのも大いに便利らしく、ちょっとした自動化ならかなりのことをこなせそうだ <a class="footnote-reference" href="#f2" id="id5">[3]</a> 。
-僕のようにshell力が乏しい人間にとって、Pythonで書けるというのはうれしい。</p>
-</div>
-<div class="section" id="id6">
-<h2>FabricでVagrantに入る</h2>
-<p>Vagrantと組み合わせる場合、まずFabricがsshで開発環境に入れなければならないのでそのための設定をする。
-ググったところ、 <a class="reference external" href="http://sysadminpy.com/sysadmin/2011/04/30/use-fabric-on-vagrant-instances">Use Fabric on Vagrant instances</a> という記事がヒットしたが、秘密鍵のパスを取得する部分が動かなかったので以下のように修正した。:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">re</span>
-<span class="kn">from</span> <span class="nn">fabric.api</span> <span class="kn">import</span> <span class="n">env</span><span class="p">,</span> <span class="n">local</span>
-
-<span class="k">def</span> <span class="nf">vagrant</span><span class="p">():</span>
-    <span class="c"># change from the default user to 'vagrant'</span>
-    <span class="n">env</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="s">'vagrant'</span>
-    <span class="c"># connect to the port-forwarded ssh</span>
-    <span class="n">env</span><span class="o">.</span><span class="n">hosts</span> <span class="o">=</span> <span class="p">[</span><span class="s">'127.0.0.1:2222'</span><span class="p">]</span>
-
-    <span class="c"># use vagrant ssh key</span>
-    <span class="c"># 'IdentityFile &quot;/Users/garsue/.vagrant.d/insecure_private_key&quot;'</span>
-    <span class="n">result</span> <span class="o">=</span> <span class="n">local</span><span class="p">(</span><span class="s">'vagrant ssh-config | grep IdentityFile'</span><span class="p">,</span> <span class="n">capture</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
-    <span class="n">env</span><span class="o">.</span><span class="n">key_filename</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s">'&quot;(.*)&quot;'</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>その他にハマった部分として、ホスト名をavahiおよびbonjourで割り振っている場合、 <span class="docutils literal"><span class="pre">env.hosts</span></span> にそのままホスト名を渡しても名前解決できないため、接続できなかった。</p>
-<p>回避策として <span class="docutils literal"><span class="pre">socket</span></span> モジュールの <span class="docutils literal"><span class="pre">gethostbyname</span></span> を利用して自力でIPアドレスを引っ張った。</p>
-</div>
-<div class="section" id="id7">
-<h2>コンテキストマネージャ</h2>
-<p><a class="reference external" href="http://www.ianlewis.org/jp/fabric-pythonic">Fabric デプロイツールのPythonicな書き方</a> の最後にあるように、コンテキストマネージャを利用してコマンドのprefixを指定できる点がかなり良い。
-よく使うのは <span class="docutils literal"><span class="pre">cd</span></span> で、たとえば</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s">&quot;~/.local/&quot;</span><span class="p">):</span>
-   <span class="n">run</span><span class="p">(</span><span class="s">&quot;ls -la&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>とした場合、このコンテキスト下では全てのコマンドの先頭に <span class="docutils literal"><span class="pre">cd</span> <span class="pre">~/.local/</span> <span class="pre">&amp;&amp;</span></span> が付与されるため、結果として <span class="docutils literal"><span class="pre">~/.local/</span></span> 以下が表示される。</p>
-<p>さらに <span class="docutils literal"><span class="pre">fabric.context_managers.prefix</span></span> を使えば任意のprefixを利用できる。あまりいい例ではないかもしれないが、 <em>virtualenvwrapper</em> を利用して仮想環境を作成するtaskを以下のように定義した。:</p>
-<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">setup_python</span><span class="p">():</span>
-    <span class="n">packages</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;ipython&quot;</span><span class="p">,</span> <span class="s">&quot;mock&quot;</span><span class="p">,</span> <span class="s">&quot;pep8&quot;</span><span class="p">,</span> <span class="s">&quot;pyflakes&quot;</span><span class="p">,</span> <span class="s">&quot;pytest-cov&quot;</span><span class="p">,</span> <span class="s">&quot;tox&quot;</span><span class="p">,</span>
-                <span class="s">&quot;dotcloud&quot;</span><span class="p">]</span>
-    <span class="n">packages</span> <span class="o">=</span> <span class="s">&quot; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s">&quot;-i &quot;</span> <span class="o">+</span> <span class="n">p</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">packages</span><span class="p">])</span>
-    <span class="k">with</span> <span class="n">cd</span><span class="p">(</span><span class="s">&quot;~&quot;</span><span class="p">):</span>
-        <span class="n">run</span><span class="p">(</span><span class="s">&quot;wget http://python-distribute.org/distribute_setup.py&quot;</span><span class="p">)</span>
-        <span class="n">run</span><span class="p">(</span><span class="s">&quot;python3 distribute_setup.py --user&quot;</span><span class="p">)</span>
-        <span class="n">run</span><span class="p">(</span><span class="s">&quot;rm distribute*&quot;</span><span class="p">)</span>
-        <span class="n">run</span><span class="p">(</span><span class="s">&quot;.local/bin/easy_install --user pip&quot;</span><span class="p">)</span>
-        <span class="n">run</span><span class="p">(</span><span class="s">&quot;.local/bin/pip install --user virtualenvwrapper&quot;</span><span class="p">)</span>
-        <span class="n">prefixes</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="s">&quot;export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3&quot;</span><span class="p">,</span>
-            <span class="s">&quot;export VIRTUALENVWRAPPER_VIRTUALENV=$HOME/.local/bin/virtualenv&quot;</span><span class="p">,</span>
-            <span class="s">&quot;export WORKON_HOME=$HOME/.virtualenvs&quot;</span><span class="p">,</span>
-            <span class="s">&quot;export PROJECT_HOME=$HOME/Projects&quot;</span><span class="p">,</span>
-            <span class="s">&quot;source .local/bin/virtualenvwrapper.sh&quot;</span>
-        <span class="p">]</span>
-        <span class="k">with</span> <span class="n">prefix</span><span class="p">(</span><span class="s">&quot; &amp;&amp; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">prefixes</span><span class="p">)):</span>
-            <span class="n">run</span><span class="p">(</span><span class="s">&quot;mkvirtualenv --python=python3 --use-distribute &quot;</span>
-                <span class="s">&quot;{} 3&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">packages</span><span class="p">))</span>
-            <span class="n">run</span><span class="p">(</span><span class="s">&quot;mkvirtualenv --python=python2 --use-distribute &quot;</span>
-                <span class="s">&quot;{} 2&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">packages</span><span class="p">))</span>
-</pre></div>
-</div>
-</div>
-<div class="section" id="plugins">
-<h2>利用したPlugins</h2>
-<div class="section" id="vagrant-vbguest">
-<h3>vagrant-vbguest</h3>
-<p>利用しているVirtual Boxと配布されているbox <a class="footnote-reference" href="#f3" id="id8">[4]</a> の Guest Additions のバージョンが異なっていたため、それをアップデートするPluginである <strong>vagrant-vbguest</strong> を利用した。</p>
-</div>
-<div class="section" id="sahara">
-<h3>Sahara</h3>
-<p>Chefと違いFabricには冪等性が無いため、同じtaskを何度も実行すると環境が変化してしまう。環境構築が目的の場合、一度作ったtaskを何度も実行するということはあまりないかもしれないが、task作成時には動かしながら作ることになるため、task実行前の状態に戻せるような仕組みが欲しくなるだろう。</p>
-<p>そこでsandbox機能を実現するpluginである <strong>Sahara</strong> を利用した。これを利用することで、仮想マシン上で行った操作を任意のタイミングでrollbackして取り消せるようなる。</p>
-<p>ただしVagrant 1.1に対応していないとか開発が止まっているとか言われているので少し注意して利用したい。</p>
-<p class="rubric">脚注</p>
-<table class="docutils footnote" frame="void" id="f0" rules="none">
-<colgroup><col class="label"/><col/></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id2">[1]</a></td><td>AWSとかVMwareとかにも対応しているらしい? 個人的に必要ないので調べてない</td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="f1" rules="none">
-<colgroup><col class="label"/><col/></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id3">[2]</a></td><td><a class="reference external" href="http://tatsu-zine.com/books/chef-solo">入門Chef Solo - Infrastructure as Code</a> が出たのでそろそろ触りたいとは思っているが、まだもう少し見送る</td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="f2" rules="none">
-<colgroup><col class="label"/><col/></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id5">[3]</a></td><td><a class="reference external" href="https://speakerdeck.com/drillbits/fabric-python-developers-festa-2013-dot-03-number-pyfes">Fabric Python Developers Festa 2013.03 #pyfes // Speaker Deck</a></td></tr>
-</tbody>
-</table>
-<table class="docutils footnote" frame="void" id="f3" rules="none">
-<colgroup><col class="label"/><col/></colgroup>
-<tbody valign="top">
-<tr><td class="label"><a class="fn-backref" href="#id8">[4]</a></td><td>僕は専ら Ubuntu 12.04 を利用している</td></tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-        <div class="postmeta">
-        <div class="author">
-            <span>投稿者 がーすー</span>
-        </div>
-        
-        
         </div><div class="archive_link">
         <a href="archive.html"> &mdash; ブログアーカイブ &mdash; </a>
     </div><ul class="related clearfix">
@@ -404,6 +349,8 @@
         </ul></article><aside class="sidebar"><section><div class="widget">
     <h1>最近の投稿</h1>
     <ul><li>
+            <a href="2013/09/22/load_test_with_gatling.html">Gatling を使った負荷テスト</a>
+        </li><li>
             <a href="2013/07/14/pet_plan.html">飼育計画</a>
         </li><li>
             <a href="2013/03/31/fabric_with_vagrant.html">FabricとVagrant</a>
@@ -413,7 +360,7 @@
 </div>
 </section><section><div class="widget">
     <h1>カテゴリー</h1>
-    <ul><li><a href="categories/information.html">information</a> (1)</li><li><a href="categories/others.html">others</a> (1)</li></ul>
+    <ul><li><a href="categories/information.html">information</a> (1)</li><li><a href="categories/others.html">others</a> (1)</li><li><a href="categories/tools.html">tools</a> (1)</li></ul>
 </div></section><section><div class="widget" id="searchbox">
     <h1>Search</h1>
     <form action="search.html" method="get">

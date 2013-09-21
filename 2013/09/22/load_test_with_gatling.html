@@ -15,7 +15,7 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
         <meta name="description" content="個人的な技術系ブログ。備忘録、レビューなど。">
         <meta name="viewport" content="width=device-width">
-        <title>ブログ開始 &mdash; garsue-blog</title>
+        <title>Gatling を使った負荷テスト &mdash; garsue-blog</title>
             <link rel="stylesheet" href="../../../_static/normalize.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/sphinx.css" type="text/css">
             <link rel="stylesheet" href="../../../_static/main.css" type="text/css">
@@ -28,7 +28,7 @@
         <script>window.jQuery || document.write('<script src="../../../_static/vendor/jquery-1.8.2.min.js"><\/script>')</script>
         <script src="../../../_static/plugins.js"></script>
         <script src="../../../_static/main.js"></script>
-        <link rel="prev" title="FabricとVagrant" href="../../03/31/fabric_with_vagrant.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
+        <link rel="next" title="飼育計画" href="../../07/14/pet_plan.html" /><link rel="alternate" type="application/rss+xml" title="RSS" href="../../../rss.html" /><script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    '../../../',
         VERSION:     '1.2.1',
@@ -74,19 +74,60 @@
                 </li>
               </ul>
           </nav><div class="main-container"><div class="main wrapper clearfix"><article><ul class="related clearfix">
-            <li class="left"> &laquo; <a href="../../03/31/fabric_with_vagrant.html">FabricとVagrant</a></li>
-            <li class="right"></li>
+            <li class="left"></li>
+            <li class="right"><a href="../../07/14/pet_plan.html">飼育計画</a> &raquo; </li>
         </ul><div class="timestamp postmeta">
-            <span>2013/02/11</span>
+            <span>2013/09/22</span>
         </div>
-    <div class="section" id="id1">
-<h1>ブログ開始</h1>
-<p>日々の積み重ねの手段として、ブログを書くことにした。
-reSTで書けるということで、<em>Tinkerer</em> を採用してみた。</p>
-<p>ターミナルで執筆できるため、更新コストが下がり、そこそこまめに書けるのではないだろうか、と期待している。</p>
-<p>内容は基本的に必要なことを書くだけに留めようと思う。
-タイトルで煽ったり、過剰な表現を使うことは避ける。
-雑感などはTwitterで十分なので事実を中心に書いていきたい。</p>
+    <div class="section" id="gatling">
+<h1>Gatling を使った負荷テスト</h1>
+<p>先日Webサービスの負荷テストを行う際に、 <a class="reference external" href="http://gatling-tool.org/">Gatling</a> というツールを使ったのでその概要をまとめておく。
+ざっくり調べたことのまとめなので、間違い等あったら <a class="reference external" href="https://twitter.com/__garsue__">&#64;__garsue__</a> に指摘してください。</p>
+<div class="section" id="id2">
+<h2>負荷テストとシナリオ</h2>
+<p>そもそも僕は負荷テストというものが何かを知らなかった。
+ググったところ JMeterを始め、いろいろな形式の負荷テストツールや負荷テストサービスがあるらしい。</p>
+<p>いずれのツールもやることは基本的にHTTPリクエストを投げることなのだが、その内容や数など、シチュエーションに応じたリクエストを作らなければ負荷テストとして意味が無い。
+そのシチュエーションを再現した一連のHTTPリクエストを「シナリオ」という。</p>
+<p>負荷テストツールを選ぶ上で、どのようにシナリオを作るかという点が大きな選択基準となる、と思う。
+その点に関して、今回触ったGatlingはなかなか秀逸だと感じた。</p>
+</div>
+<div class="section" id="id3">
+<h2>Gatlingの特徴</h2>
+<p>Gatlingの特徴はシナリオをScalaによる内部DSLで記述する点だ。
+初見でも<a class="reference external" href="https://gist.github.com/slandelle/3870509">サンプル</a>をそれなりに読み下せる。</p>
+<p><a class="reference external" href="https://gist.github.com/slandelle/3870492">JMeterのサンプル</a>が比較対象として上げられているが、こんな長ったらしいXMLを見ると体調を崩すタイプの人間にはGatlingのDSLはかなりありがたい。</p>
+<p>また、JMeter同様シナリオの自動生成もできる。やり方はJMeterと同様プロキシサーバを立ててそれ越しにWebサービスにアクセスし、HTTPのやりとりを記録する方法だ。
+JMeterと比べた利点は生成されるシナリオを人が読める点だ。</p>
+<p>生成されたシナリオは余計なリクエストや不要なヘッダを含んでいたりして、シナリオとしてそのまま使えるということはそう多くないと思う。
+したがって、シナリオとして仕上げるためにはある程度編集が必要となる。</p>
+<p>JMeterの場合はちまちまGUIから編集するか、場合によっては巨大なXMLをいじるはめになるのだろうが、Gatlingでは生成されるシナリオも比較的触りやすい形になっている <a class="footnote-reference" href="#f1" id="id5">[1]</a> 。</p>
+<p>シナリオを実行した結果のレポートもおしゃれで、大したこと無いテストでもなんだか一仕事した感を演出してくれる。
+レスポンスタイムの最小・最大・平均だけでなく、標準偏差・P値まで出し、グラフによる可視化もこれでもかというぐらいやってくれる。</p>
+<p>レポートに関しては他のツールがどんなものか分からないが、Gatlingのレポートで不足するシーンはめったにないだろう。</p>
+</div>
+<div class="section" id="id6">
+<h2>使用方法</h2>
+<p>公式ドキュメントに全て書いてあるので、そちらを読んでほしい。
+<a class="reference external" href="https://github.com/excilys/gatling/wiki">https://github.com/excilys/gatling/wiki</a></p>
+<p>英語だが、サンプルも多く使い方もシンプルなので、それほど難儀しないだろう。
+Gatling 1とGatling 2があるが、2はまだ開発中とのこと。</p>
+</div>
+<div class="section" id="id7">
+<h2>不満</h2>
+<p>起動が遅い。JVMの起動とシナリオのコンパイルのせいか、起動からシナリオ実行まで結構もたつく。
+シナリオ作成中にこまめに修正-&gt;実行をするのはそれほどスムーズではなかった。</p>
+<p>最初は一からシナリオを手書きしていたが、あまりにももたもたしてストレスが溜まったので、結局Recoderで自動生成したものやや修正するだけにした。
+そもそもそういった使い方を前提としているのかもしれない。</p>
+<p>あとはcheckによるアサーションでリダイレクト先のURLの部分一致がほしいと思った。</p>
+<p class="rubric">脚注</p>
+<table class="docutils footnote" frame="void" id="f1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id5">[1]</a></td><td>なぜか文字列がヒアドキュメントの形式( <span class="docutils literal"><span class="pre">&quot;&quot;&quot;こんな感じ&quot;&quot;&quot;</span></span> )にされるが。</td></tr>
+</tbody>
+</table>
+</div>
 </div>
 
     <div class="postmeta">
@@ -96,23 +137,27 @@ reSTで書けるということで、<em>Tinkerer</em> を採用してみた。<
         <div class="categories">
             <span>
                 カテゴリー:
-                <a href="../../../categories/information.html">information</a></span>
+                <a href="../../../categories/tools.html">tools</a></span>
         </div>
-        
+        <div class="tags">
+            <span>
+                タグ:
+                <a href="../../../tags/gatling.html">Gatling</a></span>
+        </div>
         </div>
     <ul class="related clearfix">
-            <li class="left"> &laquo; <a href="../../03/31/fabric_with_vagrant.html">FabricとVagrant</a></li>
-            <li class="right"></li>
+            <li class="left"></li>
+            <li class="right"><a href="../../07/14/pet_plan.html">飼育計画</a> &raquo; </li>
         </ul></article><aside class="sidebar"><section><div class="widget">
     <h1>最近の投稿</h1>
     <ul><li>
-            <a href="../../09/22/load_test_with_gatling.html">Gatling を使った負荷テスト</a>
+            <a href="#">Gatling を使った負荷テスト</a>
         </li><li>
             <a href="../../07/14/pet_plan.html">飼育計画</a>
         </li><li>
             <a href="../../03/31/fabric_with_vagrant.html">FabricとVagrant</a>
         </li><li>
-            <a href="#">ブログ開始</a>
+            <a href="../../02/11/initial_post.html">ブログ開始</a>
         </li></ul>
 </div>
 </section><section><div class="widget">
